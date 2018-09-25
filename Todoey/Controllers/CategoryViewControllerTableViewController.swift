@@ -7,49 +7,51 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
+import SwipeCellKit
 
 class CategoryViewControllerTableViewController: UITableViewController {
     
-    let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last
-
-    var categoryArray = [Cateogry]()
+//    let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last
     
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext 
-
+    let realm = try! Realm()
+    var categoryArray: Results<Cateogry>?
+    
+    //    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         loadCategory()
         
-        print(path)
+        //        print(path,"\n")
     }
     
     
     //MARK: - TableView Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categoryArray.count
+        return categoryArray?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        let category = categoryArray[indexPath.row]
-
-        cell.textLabel?.text = "🏵" + category.name!
+        let category = categoryArray?[indexPath.row].name ?? "No Categories Added Yet"
+        
+        cell.textLabel?.text = "🏵" + category
         
         return cell
     }
     
-//    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//
-//        context.delete(categoryArray[indexPath.row])
-//        categoryArray.remove(at: indexPath.row)
-//
-//        saveCategory()
-//    }
+    //    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    //
+    //        context.delete(categoryArray[indexPath.row])
+    //        categoryArray.remove(at: indexPath.row)
+    //
+    //        saveCategory()
+    //    }
     
     //MARK: - Add New Cateogry
     
@@ -72,28 +74,29 @@ class CategoryViewControllerTableViewController: UITableViewController {
                 let ac2 = UIAlertController(title: "No text inputted", message: nil, preferredStyle: .alert)
                 
                 ac2.addAction(UIAlertAction(title: "Try again", style: .default, handler: { (action) in
-
+                    
                 }))
                 
                 self.present(ac2, animated: true, completion: nil)
                 
                 return}
             
-            let newCategory = Cateogry(context: self.context)
+            let newCategory = Cateogry()
             newCategory.name = textField.text!
-            self.categoryArray.append(newCategory)
+            //            self.categoryArray.append(newCategory)
+            self.save(category: newCategory)
             
-            self.saveCategory()
-            
-    }))
+        }))
         present(ac, animated: true, completion: nil)
     }
     
     //MARK: - Data Manipulation Methods
     
-    func saveCategory() {
+    func save(category: Cateogry) {
         do {
-           try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         } catch {
             print("Error saving categories. \(error)")
         }
@@ -102,19 +105,22 @@ class CategoryViewControllerTableViewController: UITableViewController {
         
     }
     
-    func loadCategory(with request: NSFetchRequest<Cateogry> = Cateogry.fetchRequest()) {
+    func loadCategory() {
         
-        do{
-            categoryArray = try context.fetch(request)
-        } catch {
-            print("Eror loading categories. \(error)")
-        }
-        
+        categoryArray = realm.objects(Cateogry.self)
         tableView.reloadData()
+        
+        //        do{
+        //            categoryArray = try context.fetch(request)
+        //        } catch {
+        //            print("Eror loading categories. \(error)")
+        //        }
+        //
+        
     }
     
     //MARK: - TableView Delegate Methods
-
+    
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         performSegue(withIdentifier: "goToItems", sender: self)
     }
@@ -123,7 +129,7 @@ class CategoryViewControllerTableViewController: UITableViewController {
         let destinationVC = segue.destination as! TodoListViewController
         
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.selectedCategory = categoryArray[indexPath.row]
+            destinationVC.selectedCategory = categoryArray?[indexPath.row]
             
         }
     }
@@ -131,29 +137,29 @@ class CategoryViewControllerTableViewController: UITableViewController {
 }
 
 //MARK: - Searchbar Methods
-
-extension CategoryViewControllerTableViewController: UISearchBarDelegate {
-    
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        
-        let fetchRequest: NSFetchRequest<Cateogry> = Cateogry.fetchRequest()
-        
-        fetchRequest.predicate = NSPredicate(format: "name CONTAINS[cd] %@", searchBar.text!)
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
-        
-        loadCategory(with: fetchRequest)
-    }
-    
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        if searchText == "" {
-            
-            loadCategory()
-            
-            DispatchQueue.main.async {
-            searchBar.resignFirstResponder()
-            }
-        
- 
-        }
-    }
-}
+//
+//extension CategoryViewControllerTableViewController: UISearchBarDelegate {
+//
+//    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+//
+//        let fetchRequest: NSFetchRequest<Cateogry> = Cateogry.fetchRequest()
+//
+//        fetchRequest.predicate = NSPredicate(format: "name CONTAINS[cd] %@", searchBar.text!)
+//        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+//
+//        loadCategory(with: fetchRequest)
+//    }
+//
+//    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+//        if searchText == "" {
+//
+//            loadCategory()
+//
+//            DispatchQueue.main.async {
+//                searchBar.resignFirstResponder()
+//            }
+//
+//            
+//        }
+//    }
+//}
